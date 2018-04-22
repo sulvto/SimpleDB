@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * The Catalog keeps track of all available tables in the database and their
@@ -17,13 +18,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * @Threadsafe
  */
 public class Catalog {
+    private Map<String,Map.Entry<DbFile,String>> tables;
 
     /**
      * Constructor.
      * Creates a new, empty catalog.
      */
     public Catalog() {
-        // some code goes here
+        tables = new HashMap<>();
     }
 
     /**
@@ -36,7 +38,7 @@ public class Catalog {
      * @param pkeyField the name of the primary key field
      */
     public void addTable(DbFile file, String name, String pkeyField) {
-        // some code goes here
+        tables.put(name, new AbstractMap.SimpleEntry<DbFile,String>(file, pkeyField));
     }
 
     public void addTable(DbFile file, String name) {
@@ -59,8 +61,11 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public int getTableId(String name) throws NoSuchElementException {
-        // some code goes here
-        return 0;
+        Map.Entry<DbFile, String> dbFile = tables.get(name);
+        if (dbFile == null) {
+            throw new NoSuchElementException("table doesn't exist");
+        }
+        return dbFile.getKey().getId();
     }
 
     /**
@@ -70,8 +75,11 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
-        // some code goes here
-        return null;
+        Optional<Map.Entry<DbFile, String>> find = tables.values().stream().filter(dbFileStringEntry -> dbFileStringEntry.getKey().getId() == tableid).findFirst();
+        if (find.isPresent()) {
+            return find.get().getKey().getTupleDesc();
+        }
+        throw new NoSuchElementException("table doesn't exist");
     }
 
     /**
@@ -81,28 +89,44 @@ public class Catalog {
      *     function passed to addTable
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
-        // some code goes here
-        return null;
+        Optional<Map.Entry<DbFile, String>> find = tables.values().stream().filter(dbFileStringEntry -> dbFileStringEntry.getKey().getId() == tableid).findFirst();
+        if (find.isPresent()) {
+            return find.get().getKey();
+        }
+        throw new NoSuchElementException("table doesn't exist");
     }
 
     public String getPrimaryKey(int tableid) {
-        // some code goes here
-        return null;
+        Optional<Map.Entry<DbFile, String>> find = tables.values().stream().filter(dbFileStringEntry -> dbFileStringEntry.getKey().getId() == tableid).findFirst();
+        if (find.isPresent()) {
+            return find.get().getValue();
+        }
+        throw new NoSuchElementException("table doesn't exist");
     }
 
     public Iterator<Integer> tableIdIterator() {
-        // some code goes here
-        return null;
+        return tables.values()
+                .stream()
+                .map(dbFileStringEntry -> dbFileStringEntry.getKey().getId())
+                .collect(Collectors.toSet())
+                .iterator();
     }
 
     public String getTableName(int id) {
-        // some code goes here
-        return null;
+        Optional<Map.Entry<String, Map.Entry<DbFile, String>>> find = tables
+                .entrySet()
+                .stream()
+                .filter(dbFileStringEntry -> dbFileStringEntry.getValue().getKey().getId() == id)
+                .findFirst();
+        if (find.isPresent()) {
+            return find.get().getKey();
+        }
+        throw new NoSuchElementException("table doesn't exist");
     }
     
     /** Delete all tables from the catalog */
     public void clear() {
-        // some code goes here
+        tables.clear();
     }
     
     /**
