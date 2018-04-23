@@ -2,8 +2,15 @@ package simpledb;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.FileVisitOption;
+import java.nio.file.OpenOption;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -14,8 +21,8 @@ import java.util.NoSuchElementException;
  * closely with HeapPage. The format of HeapPages is described in the HeapPage
  * constructor.
  *
- * @see simpledb.HeapPage#HeapPage
  * @author Sam Madden
+ * @see simpledb.HeapPage#HeapPage
  */
 public class HeapFile implements DbFile {
 
@@ -25,9 +32,8 @@ public class HeapFile implements DbFile {
     /**
      * Constructs a heap file backed by the specified file.
      *
-     * @param f
-     *            the file that stores the on-disk backing store for this heap
-     *            file.
+     * @param f the file that stores the on-disk backing store for this heap
+     *          file.
      */
     public HeapFile(File f, TupleDesc td) {
         this.file = f;
@@ -69,8 +75,7 @@ public class HeapFile implements DbFile {
     public Page readPage(PageId pid) {
         int pageNumber = pid.getPageNumber();
         byte[] emptyPageData = HeapPage.createEmptyPageData();
-        try {
-            FileInputStream fileInputStream = new FileInputStream(file);
+        try (FileInputStream fileInputStream = new FileInputStream(file)){
             fileInputStream.skip(pageNumber * BufferPool.getPageSize());
             fileInputStream.read(emptyPageData);
             return new HeapPage(new HeapPageId(pid.getTableId(), pageNumber), emptyPageData);
@@ -81,8 +86,10 @@ public class HeapFile implements DbFile {
 
     // see DbFile.java for javadocs
     public void writePage(Page page) throws IOException {
-        // some code goes here
-        // not necessary for lab1
+        FileOutputStream fileOutputStream = new FileOutputStream(file);
+        byte[] pageData = page.getPageData();
+        fileOutputStream.write(pageData, page.getId().getPageNumber() * BufferPool.getPageSize(), pageData.length);
+        fileOutputStream.close();
     }
 
     /**
@@ -95,17 +102,44 @@ public class HeapFile implements DbFile {
     // see DbFile.java for javadocs
     public ArrayList<Page> insertTuple(TransactionId tid, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
-        // some code goes here
-        return null;
-        // not necessary for lab1
+        ArrayList<Page> result = new ArrayList<>();
+
+        int tableId = getId();
+        for (int pgNo = 0, numPages = numPages(); pgNo < numPages; pgNo++) {
+
+            HeapPage page = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(tableId,pgNo), Permissions.READ_WRITE);
+            if (page.getNumEmptySlots() > 0) {
+
+                page.insertTuple(t);
+                result.add(page);
+                break;
+            }
+
+            // last
+            if (pgNo == numPages-1) {
+                page = new HeapPage(new HeapPageId(tableId, pgNo), HeapPage.createEmptyPageData());
+                page.insertTuple(t);
+                result.add(page);
+                writePage(page);
+                break;
+            }
+        }
+
+        return result;
     }
 
     // see DbFile.java for javadocs
     public ArrayList<Page> deleteTuple(TransactionId tid, Tuple t) throws DbException,
             TransactionAbortedException {
-        // some code goes here
-        return null;
-        // not necessary for lab1
+        PageId pageId = t.getRecordId().getPageId();
+        if (pageId.getTableId() == getId()) {
+            ArrayList<Page> result = new ArrayList<>();
+            HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid, pageId, Permissions.READ_WRITE);
+            page.deleteTuple(t);
+            result.add(page);
+            return result;
+        }
+        throw new DbException("not a member of the file ");
     }
 
     // see DbFile.java for javadocs

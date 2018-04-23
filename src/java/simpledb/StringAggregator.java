@@ -1,11 +1,20 @@
 package simpledb;
 
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Knows how to compute some aggregate over a set of StringFields.
  */
 public class StringAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
+    private final int gbfield;
+    private final boolean NO_GROUPING;
+    private final Type gbfieldtype;
+    private final int afield;
+    private final Field DUMMY_FIELD = new StringField("",0);
+    private final Map<Field, AtomicInteger> count;
 
     /**
      * Aggregate constructor
@@ -17,7 +26,15 @@ public class StringAggregator implements Aggregator {
      */
 
     public StringAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
-        // some code goes here
+        if (what != Op.COUNT) {
+            throw new IllegalArgumentException("only supports COUNT");
+        }
+
+        this.gbfield = gbfield;
+        this.NO_GROUPING = (gbfield == Aggregator.NO_GROUPING);
+        this.gbfieldtype = gbfieldtype;
+        this.afield = afield;
+        count = new HashMap<>();
     }
 
     /**
@@ -25,7 +42,13 @@ public class StringAggregator implements Aggregator {
      * @param tup the Tuple containing an aggregate field and a group-by field
      */
     public void mergeTupleIntoGroup(Tuple tup) {
-        // some code goes here
+        Field gbKey = NO_GROUPING ? DUMMY_FIELD : tup.getField(gbfield);
+        if (gbKey != null) {
+            if (!count.containsKey(gbKey)) {
+                count.put(gbKey, new AtomicInteger(1));
+            }
+            count.get(gbKey).incrementAndGet();
+        }
     }
 
     /**
@@ -37,8 +60,53 @@ public class StringAggregator implements Aggregator {
      *   aggregate specified in the constructor.
      */
     public OpIterator iterator() {
-        // some code goes here
-        throw new UnsupportedOperationException("please implement me for lab2");
+        return new OpIterator() {
+            private Iterator<Field> child;
+            private TupleDesc tupleDesc = new TupleDesc(NO_GROUPING ? new Type[]{Type.INT_TYPE} : new Type[]{gbfieldtype, Type.INT_TYPE});
+
+            @Override
+            public void open() throws DbException, TransactionAbortedException {
+                child = count.keySet().iterator();
+            }
+
+            @Override
+            public boolean hasNext() throws DbException, TransactionAbortedException {
+                return child != null && child.hasNext();
+            }
+
+            @Override
+            public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
+
+                Field gbField = child.next();
+                Tuple tuple = new Tuple(tupleDesc);
+                IntField countField = new IntField(count.get(gbField).get());
+                if (NO_GROUPING) {
+                    tuple.setField(0, countField);
+                } else {
+                    tuple.setField(0, gbField);
+                    tuple.setField(1, countField);
+                }
+                return tuple;
+            }
+
+            @Override
+            public void rewind() throws DbException, TransactionAbortedException {
+                open();
+            }
+
+            @Override
+            public TupleDesc getTupleDesc() {
+                return tupleDesc;
+            }
+
+            @Override
+            public void close() {
+                child = null;
+            }
+        };
     }
 
 }
