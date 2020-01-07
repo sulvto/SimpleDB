@@ -10,8 +10,9 @@ public class Insert extends Operator {
 
     private static final long serialVersionUID = 1L;
     private final TransactionId transactionId;
-    private final OpIterator child;
+    private OpIterator child;
     private final int tableId;
+    private boolean inserted = false;
 
     /**
      * Constructor.
@@ -43,6 +44,10 @@ public class Insert extends Operator {
     }
 
     public void close() {
+        try {
+            Database.getBufferPool().flushAllPages();
+        } catch (IOException e) {
+        }
         super.close();
         child.close();
     }
@@ -64,27 +69,32 @@ public class Insert extends Operator {
      * @see Database#getBufferPool
      * @see BufferPool#insertTuple
      */
+    @Override
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
-        if (child.hasNext()) {
+        if (inserted) {
             return null;
         }
-        Tuple tuple = child.next();
-        try {
-            Database.getBufferPool().insertTuple(transactionId, tableId, tuple);
-        } catch (IOException e) {
-            throw new DbException(e.getMessage());
+        int count = 0;
+        while (child.hasNext()) {
+            try {
+                Database.getBufferPool().insertTuple(transactionId, tableId, child.next());
+                count++;
+            } catch (IOException e) {
+                throw new DbException("Insert: Error: " + e.getMessage());
+            }
         }
-        return tuple;
+        inserted = true;
+
+        return Utility.getTuple(new int[]{count}, 1);
     }
 
     @Override
     public OpIterator[] getChildren() {
-        // some code goes here
-        return null;
+        return new OpIterator[]{child};
     }
 
     @Override
     public void setChildren(OpIterator[] children) {
-        // some code goes here
+        this.child = children[0];
     }
 }

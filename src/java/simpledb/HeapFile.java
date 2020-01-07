@@ -36,8 +36,23 @@ public class HeapFile implements DbFile {
      *          file.
      */
     public HeapFile(File f, TupleDesc td) {
-        this.file = f;
+        initFile(f);
         this.tupleDesc = td;
+    }
+
+    /**
+     * init the file
+     * @param file
+     */
+    private void initFile(File file) {
+        this.file = file;
+        if (!this.file.exists()) {
+            try {
+                this.file.createNewFile();
+            } catch (IOException e) {
+                throw new UnknownError(e.getMessage());
+            }
+        }
     }
 
     /**
@@ -58,6 +73,7 @@ public class HeapFile implements DbFile {
      *
      * @return an ID uniquely identifying this HeapFile.
      */
+    @Override
     public int getId() {
         return file.getAbsoluteFile().hashCode();
     }
@@ -67,11 +83,13 @@ public class HeapFile implements DbFile {
      *
      * @return TupleDesc of this DbFile.
      */
+    @Override
     public TupleDesc getTupleDesc() {
         return tupleDesc;
     }
 
     // see DbFile.java for javadocs
+    @Override
     public Page readPage(PageId pid) {
         int pageNumber = pid.getPageNumber();
         byte[] emptyPageData = HeapPage.createEmptyPageData();
@@ -143,6 +161,7 @@ public class HeapFile implements DbFile {
     }
 
     // see DbFile.java for javadocs
+    @Override
     public DbFileIterator iterator(TransactionId tid) {
         return new DbFileIterator() {
             private final int tableId = getId();
@@ -189,6 +208,7 @@ public class HeapFile implements DbFile {
 
             @Override
             public void rewind() throws DbException, TransactionAbortedException {
+                close();
                 open();
             }
 

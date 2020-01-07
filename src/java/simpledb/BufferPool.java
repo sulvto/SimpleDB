@@ -147,6 +147,7 @@ public class BufferPool {
     public void insertTuple(TransactionId tid, int tableId, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
         ArrayList<Page> pages = Database.getCatalog().getDatabaseFile(tableId).insertTuple(tid, t);
+        pages.forEach(page -> page.markDirty(true, tid));
     }
 
     /**
@@ -166,6 +167,7 @@ public class BufferPool {
             throws DbException, IOException, TransactionAbortedException {
         DbFile dbFile = Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
         ArrayList<Page> pages = dbFile.deleteTuple(tid, t);
+        pages.forEach(page -> page.markDirty(true, tid));
     }
 
     /**
@@ -197,13 +199,15 @@ public class BufferPool {
      * @param pid an ID indicating the page to flush
      */
     private synchronized void flushPage(PageId pid) throws IOException {
+
         if (pool.containsKey(pid)) {
             Page page = pool.get(pid);
-
-            DbFile databaseFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
-            databaseFile.writePage(page);
+            if (page.isDirty() != null) {
+                DbFile databaseFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
+                databaseFile.writePage(page);
+                page.markDirty(false, null);
+            }
         }
-
     }
 
     /** Write all pages of the specified transaction to disk.

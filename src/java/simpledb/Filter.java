@@ -9,7 +9,7 @@ public class Filter extends Operator {
 
     private static final long serialVersionUID = 1L;
     private final Predicate predicate;
-    private final OpIterator child;
+    private OpIterator child;
 
     /**
      * Constructor accepts a predicate to apply and a child operator to read
@@ -36,28 +36,38 @@ public class Filter extends Operator {
     public void open() throws DbException, NoSuchElementException,
             TransactionAbortedException {
         child.open();
+        super.open();
     }
 
     public void close() {
         child.close();
+        super.close();
     }
 
     public void rewind() throws DbException, TransactionAbortedException {
-        child.rewind();
+        close();
+        open();
     }
 
     /**
      * AbstractDbIterator.readNext implementation. Iterates over tuples from the
      * child operator, applying the predicate to them and returning those that
      * pass the predicate (i.e. for which the Predicate.filter() returns true.)
-     * 
+     *
      * @return The next tuple that passes the filter, or null if there are no
-     *         more tuples
+     * more tuples
      * @see Predicate#filter
      */
+    @Override
     protected Tuple fetchNext() throws NoSuchElementException,
             TransactionAbortedException, DbException {
-        return child.next();
+        while (child.hasNext()) {
+            Tuple next = child.next();
+            if (predicate.filter(next)) {
+                return next;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -67,7 +77,7 @@ public class Filter extends Operator {
 
     @Override
     public void setChildren(OpIterator[] children) {
-        // some code goes here
+        child = children[0];
     }
 
 }
