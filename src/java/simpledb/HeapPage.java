@@ -109,6 +109,11 @@ public class HeapPage implements Page {
         }
     }
 
+    @Override
+    public String print() {
+        throw new UnsupportedOperationException();
+    }
+
     /**
      * @return the PageId associated with this page.
      */

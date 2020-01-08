@@ -161,6 +161,11 @@ public class BTreeInternalPage extends BTreePage {
 		}
 	}
 
+	@Override
+	public String print() {
+		return null;
+	}
+
 	/**
 	 * Read keys from the source file.
 	 */

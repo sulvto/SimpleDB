@@ -171,8 +171,7 @@ public class Catalog {
                 Type[] typeAr = types.toArray(new Type[0]);
                 String[] namesAr = names.toArray(new String[0]);
                 TupleDesc t = new TupleDesc(typeAr, namesAr);
-                HeapFile tabHf = new HeapFile(new File(baseFolder+"/"+name + ".dat"), t);
-                addTable(tabHf,name,primaryKey);
+                addTable(baseFolder, name, primaryKey, t);
                 System.out.println("Added table : " + name + " with schema " + t);
             }
         } catch (IOException e) {
@@ -181,7 +180,23 @@ public class Catalog {
         } catch (IndexOutOfBoundsException e) {
             System.out.println ("Invalid catalog entry : " + line);
             System.exit(0);
+        } catch (TransactionAbortedException e) {
+            e.printStackTrace();
+            System.exit(0);
+        } catch (DbException e) {
+            e.printStackTrace();
+            System.exit(0);
         }
+    }
+
+    private void addTable(String baseFolder, String name, String primaryKey, TupleDesc t) throws TransactionAbortedException, IOException, DbException {
+
+        if (primaryKey == null || primaryKey.length() == 0) {
+            primaryKey = "id";
+        }
+        int keyFieldIndex = t.fieldNameToIndex(primaryKey);
+        BTreeFile bTreeFile = BTreeUtility.createBTreeFile(baseFolder, name, keyFieldIndex, t);
+        addTable(bTreeFile, name, primaryKey);
     }
 }
 

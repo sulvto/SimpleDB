@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.stream.Collectors;
 
 import simpledb.Predicate.Op;
 
@@ -412,6 +413,23 @@ public class BTreeUtility {
 		Arrays.fill(typeAr, Type.INT_TYPE);
 		return BTreeFileEncoder.convert(tuples, hFile, bFile, BufferPool.getPageSize(),
 				columns, typeAr, ',', keyField) ;
+	}
+
+	public static BTreeFile createBTreeFile(String dbFilePath, String name, int keyFieldIndex, TupleDesc tupleDesc)
+			throws IOException, DbException, TransactionAbortedException {
+
+		// make dir
+		new File(dbFilePath).mkdirs();
+
+		// Convert the tuples list to a B+ tree file
+		File hFile = new File(dbFilePath + File.separator + name + ".dat");
+		if (!hFile.exists()) hFile.createNewFile();
+
+		File bFile = new File(dbFilePath + File.separator + name + "_index.dat");
+		if (!bFile.exists()) bFile.createNewFile();
+
+		return BTreeFileEncoder.convert(new ArrayList<>(), hFile, bFile, BufferPool.getPageSize(),
+				tupleDesc.numFields(), tupleDesc.getFields().stream().map(tdItem -> tdItem.fieldType).toArray(Type[]::new), ',', keyFieldIndex);
 	}
 
 	/** Opens a BTreeFile and adds it to the catalog.

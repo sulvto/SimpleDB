@@ -153,6 +153,11 @@ public class BTreeLeafPage extends BTreePage {
 		}
 	}
 
+	@Override
+	public String print() {
+		return null;
+	}
+
 	/**
 	 * Read tuples from the source file.
 	 */

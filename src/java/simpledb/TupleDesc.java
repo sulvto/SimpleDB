@@ -83,6 +83,10 @@ public class TupleDesc implements Serializable {
         return fields.size();
     }
 
+    public ArrayList<TDItem> getFields() {
+        return fields;
+    }
+
     /**
      * Gets the (possibly null) field name of the ith field of this TupleDesc.
      *
