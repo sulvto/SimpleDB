@@ -135,7 +135,7 @@ public class BTreeUtility {
 	 */
 	public static BTreeFile createRandomBTreeFile(int columns, int rows,
 			int maxValue, Map<Integer, Integer> columnSpecification,
-			ArrayList<ArrayList<Integer>> tuples, int keyField) 
+			ArrayList<ArrayList<Integer>> tuples, int keyField)
 					throws IOException, DbException, TransactionAbortedException {
 
 		if (tuples != null) {
@@ -155,8 +155,8 @@ public class BTreeUtility {
 
 		Type[] typeAr = new Type[columns];
 		Arrays.fill(typeAr, Type.INT_TYPE);
-		return BTreeFileEncoder.convert(tuples, hFile, bFile, BufferPool.getPageSize(),
-				columns, typeAr, ',', keyField) ;
+		TupleDesc tupleDesc = new TupleDesc(typeAr);
+		return BTreeFileEncoder.convert(tuples, hFile, bFile, BufferPool.getPageSize(), ',', keyField, tupleDesc) ;
 	}
 	
 	/**
@@ -312,8 +312,9 @@ public class BTreeUtility {
 	public static BTreeLeafPage createRandomLeafPage(BTreePageId pid, int columns, int keyField, int numTuples, int min, int max) throws IOException {
 		Type[] typeAr = new Type[columns];
 		Arrays.fill(typeAr, Type.INT_TYPE);
-		byte[] data = BTreeFileEncoder.convertToLeafPage(BTreeUtility.generateRandomTuples(columns, numTuples, min, max), 
-				BufferPool.getPageSize(), columns, typeAr, keyField);
+		TupleDesc td = new TupleDesc(typeAr);
+		byte[] data = BTreeFileEncoder.convertToLeafPage(BTreeUtility.generateRandomTuples(columns, numTuples, min, max),
+				BufferPool.getPageSize(), td, keyField);
 		BTreeLeafPage page = new BTreeLeafPage(pid, data, keyField);
 		return page;
 	}
@@ -367,20 +368,21 @@ public class BTreeUtility {
 
 	/**
 	 * creates a *non* random B+ tree file for testing
-	 * @param columns - number of columns
-	 * @param rows - number of rows
+	 *
+	 * @param columns             - number of columns
+	 * @param rows                - number of rows
 	 * @param columnSpecification - optional column specification
-	 * @param tuples - optional list of tuples to return
-	 * @param keyField - the index of the key field
+	 * @param tuples              - optional list of tuples to return
+	 * @param keyField            - the index of the key field
 	 * @return a BTreeFile
 	 * @throws IOException
 	 * @throws DbException
 	 * @throws TransactionAbortedException
 	 */
 	public static BTreeFile createBTreeFile(int columns, int rows,
-			Map<Integer, Integer> columnSpecification,
-			ArrayList<ArrayList<Integer>> tuples, int keyField) 
-					throws IOException, DbException, TransactionAbortedException {
+											Map<Integer, Integer> columnSpecification,
+											ArrayList<ArrayList<Integer>> tuples, int keyField)
+			throws IOException, DbException, TransactionAbortedException {
 		if (tuples != null) {
 			tuples.clear();
 		} else {
@@ -395,7 +397,7 @@ public class BTreeUtility {
 				Integer columnValue = null;
 				if (columnSpecification != null) columnValue = columnSpecification.get(j);
 				if (columnValue == null) {
-					columnValue = (i+1)*(j+1);
+					columnValue = (i + 1) * (j + 1);
 				}
 				tuple.add(columnValue);
 			}
@@ -411,8 +413,8 @@ public class BTreeUtility {
 
 		Type[] typeAr = new Type[columns];
 		Arrays.fill(typeAr, Type.INT_TYPE);
-		return BTreeFileEncoder.convert(tuples, hFile, bFile, BufferPool.getPageSize(),
-				columns, typeAr, ',', keyField) ;
+		TupleDesc td = new TupleDesc(typeAr);
+		return BTreeFileEncoder.convert(tuples, hFile, bFile, BufferPool.getPageSize(), ',', keyField, td);
 	}
 
 	public static BTreeFile createBTreeFile(String dbFilePath, String name, int keyFieldIndex, TupleDesc tupleDesc)
@@ -428,20 +430,18 @@ public class BTreeUtility {
 		File bFile = new File(dbFilePath + File.separator + name + "_index.dat");
 		if (!bFile.exists()) bFile.createNewFile();
 
-		return BTreeFileEncoder.convert(new ArrayList<>(), hFile, bFile, BufferPool.getPageSize(),
-				tupleDesc.numFields(), tupleDesc.getFields().stream().map(tdItem -> tdItem.fieldType).toArray(Type[]::new), ',', keyFieldIndex);
+		return BTreeFileEncoder.convert(new ArrayList<>(), hFile, bFile, BufferPool.getPageSize(), ',', keyFieldIndex, tupleDesc);
 	}
 
 	/** Opens a BTreeFile and adds it to the catalog.
 	 *
-	 * @param cols number of columns in the table.
+	 * @param td the tuple descriptor of tuples in the file.
 	 * @param f location of the file storing the table.
 	 * @param keyField the field the B+ tree is keyed on
 	 * @return the opened table.
 	 */
-	public static BTreeFile openBTreeFile(int cols, File f, int keyField) {
+	public static BTreeFile openBTreeFile(TupleDesc td, File f, int keyField) {
 		// create the BTreeFile and add it to the catalog
-		TupleDesc td = Utility.getTupleDesc(cols);
 		BTreeFile bf = new BTreeFile(f, keyField, td);
 		Database.getCatalog().addTable(bf, UUID.randomUUID().toString());
 		return bf;
@@ -461,7 +461,7 @@ public class BTreeUtility {
 	 * will be overwritten. The new table will be added to the Catalog with
 	 * the specified number of columns as IntFields indexed on the keyField.
 	 */
-	public static BTreeFile createEmptyBTreeFile(String path, int cols, int keyField)
+	public static BTreeFile createEmptyBTreeFile(String path, TupleDesc td, int keyField)
 			throws IOException {
 		File f = new File(path);
 		// touch the file
@@ -469,7 +469,7 @@ public class BTreeUtility {
 		fos.write(new byte[0]);
 		fos.close();
 
-		BTreeFile bf = openBTreeFile(cols, f, keyField);
+		BTreeFile bf = openBTreeFile(td, f, keyField);
 
 		return bf;
 	}
@@ -480,7 +480,7 @@ public class BTreeUtility {
 	 * the file will be overwritten. The new table will be added to the Catalog with
 	 * the specified number of columns as IntFields indexed on the keyField.
 	 */
-	public static BTreeFile createEmptyBTreeFile(String path, int cols, int keyField, int pages)
+	public static BTreeFile createEmptyBTreeFile(String path, TupleDesc td, int keyField, int pages)
 			throws IOException {
 		File f = new File(path);
 		BufferedOutputStream bw = new BufferedOutputStream(
@@ -493,7 +493,7 @@ public class BTreeUtility {
 		}
 		bw.close();
 
-		BTreeFile bf = openBTreeFile(cols, f, keyField);
+		BTreeFile bf = openBTreeFile(td, f, keyField);
 
 		return bf;
 	}

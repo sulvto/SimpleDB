@@ -39,7 +39,7 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
 		File emptyFile = File.createTempFile("empty", ".dat");
 		emptyFile.deleteOnExit();
 		Database.reset();
-		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 1);
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), Utility.getTupleDesc(2), 1);
 
 		Tuple tup = null;
 		// we should be able to add 502 tuples on one page
@@ -79,7 +79,7 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
 		File emptyFile = File.createTempFile("empty", ".dat");
 		emptyFile.deleteOnExit();
 		Database.reset();
-		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 1);
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), Utility.getTupleDesc(2), 1);
 
 		Tuple tup = null;
 

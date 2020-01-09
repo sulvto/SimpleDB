@@ -57,8 +57,8 @@ public class BTreeLeafPageTest extends SimpleDbTestBase {
 
 		// Convert it to a BTreeLeafPage
 		try {
-			EXAMPLE_DATA = BTreeFileEncoder.convertToLeafPage(tuples, 
-					BufferPool.getPageSize(), 2, new Type[]{Type.INT_TYPE, Type.INT_TYPE}, 0);
+			EXAMPLE_DATA = BTreeFileEncoder.convertToLeafPage(tuples,
+					BufferPool.getPageSize(), new TupleDesc(new Type[]{Type.INT_TYPE, Type.INT_TYPE}), 0);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}

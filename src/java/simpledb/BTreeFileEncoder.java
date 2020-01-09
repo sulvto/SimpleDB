@@ -24,7 +24,7 @@ public class BTreeFileEncoder {
 	 * @return the BTreeFile
 	 */
 	public static BTreeFile convert(ArrayList<ArrayList<Integer>> tuples, File hFile, 
-			File bFile, int keyField, int numFields) throws IOException {
+			File bFile, int keyField, int numFields, TupleDesc td) throws IOException {
 		File tempInput = File.createTempFile("tempTable", ".txt");
 		tempInput.deleteOnExit();
 		BufferedWriter bw = new BufferedWriter(new FileWriter(tempInput));
@@ -45,7 +45,7 @@ public class BTreeFileEncoder {
 			bw.write('\n');
 		}
 		bw.close();
-		return convert(tempInput, hFile, bFile, keyField, numFields);
+		return convert(tempInput, hFile, bFile, keyField, numFields, td);
 	}
 
 	/**
@@ -56,17 +56,18 @@ public class BTreeFileEncoder {
 	 * @param bFile - the file on disk to back the resulting BTreeFile
 	 * @param keyField - the index of the key field for this B+ tree
 	 * @param numFields - the number of fields in each tuple
+	 * @param td - the tuple descriptor of tuples in the file.
 	 * @return the BTreeFile
 	 */
 	public static BTreeFile convert(File inFile, File hFile, File bFile,
-			int keyField, int numFields)
+			int keyField, int numFields, TupleDesc td)
 					throws IOException {
 		// convert the inFile to HeapFile first.
 		HeapFileEncoder.convert(inFile, hFile, BufferPool.getPageSize(), numFields);
 		HeapFile heapf = Utility.openHeapFile(numFields, hFile);
 
 		// add the heap file to B+ tree file
-		BTreeFile bf = BTreeUtility.openBTreeFile(numFields, bFile, keyField);
+		BTreeFile bf = BTreeUtility.openBTreeFile(td, bFile, keyField);
 
 		try {
 			TransactionId tid = new TransactionId();
@@ -146,15 +147,13 @@ public class BTreeFileEncoder {
 	 * @param hFile - the file to temporarily store the data as a heap file on disk
 	 * @param bFile - the file on disk to back the resulting BTreeFile
 	 * @param npagebytes - number of bytes per page
-	 * @param numFields - number of fields per tuple
-	 * @param typeAr - array containing the types of the tuples
 	 * @param fieldSeparator - character separating fields in the raw data file
 	 * @param keyField - the field of the tuples the B+ tree will be keyed on
+	 * @param td - the tuple descriptor of tuples in the file.
 	 * @return the BTreeFile
 	 */
 	public static BTreeFile convert(ArrayList<ArrayList<Integer>> tuples, File hFile, 
-			File bFile, int npagebytes,
-			int numFields, Type[] typeAr, char fieldSeparator, int keyField) 
+			File bFile, int npagebytes, char fieldSeparator, int keyField, TupleDesc td)
 					throws IOException, DbException, TransactionAbortedException {
 		File tempInput = File.createTempFile("tempTable", ".txt");
 		tempInput.deleteOnExit();
@@ -163,21 +162,20 @@ public class BTreeFileEncoder {
 			int writtenFields = 0;
 			for (Integer field : tuple) {
 				writtenFields++;
-				if (writtenFields > numFields) {
+				if (writtenFields > td.numFields()) {
 					bw.close();
-					throw new RuntimeException("Tuple has more than " + numFields + " fields: (" +
+					throw new RuntimeException("Tuple has more than " + td.numFields() + " fields: (" +
 							Utility.listToString(tuple) + ")");
 				}
 				bw.write(String.valueOf(field));
-				if (writtenFields < numFields) {
+				if (writtenFields < td.numFields()) {
 					bw.write(',');
 				}
 			}
 			bw.write('\n');
 		}
 		bw.close();
-		return convert(tempInput, hFile, bFile, npagebytes,
-				numFields, typeAr, fieldSeparator, keyField);
+		return convert(tempInput, hFile, bFile, npagebytes, fieldSeparator, keyField, td);
 	}
 
 	/** 
@@ -187,21 +185,19 @@ public class BTreeFileEncoder {
 	 * @param hFile - the data file for the HeapFile to be used as an intermediate conversion step
 	 * @param bFile - the data file for the BTreeFile
 	 * @param npagebytes - number of bytes per page
-	 * @param numFields - number of fields per tuple
-	 * @param typeAr - array containing the types of the tuples
 	 * @param fieldSeparator - character separating fields in the raw data file
 	 * @param keyField - the field of the tuples the B+ tree will be keyed on
+	 * @param td - the tuple descriptor of tuples in the file.
 	 * @return the B+ tree file
 	 * @throws IOException
 	 * @throws DbException
 	 * @throws TransactionAbortedException
 	 */
-	public static BTreeFile convert(File inFile, File hFile, File bFile, int npagebytes,
-			int numFields, Type[] typeAr, char fieldSeparator, int keyField) 
+	public static BTreeFile convert(File inFile, File hFile, File bFile, int npagebytes, char fieldSeparator, int keyField, TupleDesc td)
 					throws IOException, DbException, TransactionAbortedException {
 		// convert the inFile to HeapFile first.
-		HeapFileEncoder.convert(inFile, hFile, BufferPool.getPageSize(), numFields);
-		HeapFile heapf = Utility.openHeapFile(numFields, hFile);
+		HeapFileEncoder.convert(inFile, hFile, BufferPool.getPageSize(), td.numFields());
+		HeapFile heapf = Utility.openHeapFile(td.numFields(), hFile);
 
 		// read all the tuples from the heap file and sort them on the keyField
 		ArrayList<Tuple> tuples = new ArrayList<Tuple>();
@@ -216,13 +212,13 @@ public class BTreeFileEncoder {
 		Collections.sort(tuples, new TupleComparator(keyField));
 
 		// add the tuples to B+ tree file
-		BTreeFile bf = BTreeUtility.openBTreeFile(numFields, bFile, keyField);
-		Type keyType = typeAr[keyField];
+		BTreeFile bf = BTreeUtility.openBTreeFile(td, bFile, keyField);
+		Type keyType = td.getFieldType(keyField);
 		int tableid = bf.getId();
 
 		int nrecbytes = 0;
-		for (int i = 0; i < numFields ; i++) {
-			nrecbytes += typeAr[i].getLen();
+		for (int i = 0; i < td.numFields() ; i++) {
+			nrecbytes += td.getFieldType(i).getLen();
 		}
 		// pointerbytes: left sibling pointer, right sibling pointer, parent pointer
 		int leafpointerbytes = 3 * BTreeLeafPage.INDEX_SIZE; 
@@ -256,7 +252,7 @@ public class BTreeFileEncoder {
 			}
 			else {
 				// write out a page of records
-				byte[] leafPageBytes = convertToLeafPage(page1, npagebytes, numFields, typeAr, keyField);
+				byte[] leafPageBytes = convertToLeafPage(page1, npagebytes, td, keyField);
 				BTreePageId leafPid = new BTreePageId(tableid, bf.numPages() + 1, BTreePageId.LEAF);
 				BTreeLeafPage leafPage = new BTreeLeafPage(leafPid, leafPageBytes, keyField);
 				leafPage.setLeftSiblingId(leftSiblingId);
@@ -284,7 +280,7 @@ public class BTreeFileEncoder {
 		BTreePageId lastPid = null;
 		if(page2.size() == 0) {
 			// write out a page of records - this is the root page
-			byte[] lastPageBytes = convertToLeafPage(page1, npagebytes, numFields, typeAr, keyField);
+			byte[] lastPageBytes = convertToLeafPage(page1, npagebytes, td, keyField);
 			lastPid = new BTreePageId(tableid, bf.numPages() + 1, BTreePageId.LEAF);
 			BTreeLeafPage lastPage = new BTreeLeafPage(lastPid, lastPageBytes, keyField);
 			lastPage.setLeftSiblingId(leftSiblingId);
@@ -300,13 +296,13 @@ public class BTreeFileEncoder {
 			lastPg.addAll(page2);
 
 			// write out the last two pages of records
-			byte[] secondToLastPageBytes = convertToLeafPage(secondToLastPg, npagebytes, numFields, typeAr, keyField);
+			byte[] secondToLastPageBytes = convertToLeafPage(secondToLastPg, npagebytes, td, keyField);
 			BTreePageId secondToLastPid = new BTreePageId(tableid, bf.numPages() + 1, BTreePageId.LEAF);
 			BTreeLeafPage secondToLastPage = new BTreeLeafPage(secondToLastPid, secondToLastPageBytes, keyField);
 			secondToLastPage.setLeftSiblingId(leftSiblingId);
 			bf.writePage(secondToLastPage);
 
-			byte[] lastPageBytes = convertToLeafPage(lastPg, npagebytes, numFields, typeAr, keyField);
+			byte[] lastPageBytes = convertToLeafPage(lastPg, npagebytes, td, keyField);
 			lastPid = new BTreePageId(tableid, bf.numPages() + 1, BTreePageId.LEAF);
 			BTreeLeafPage lastPage = new BTreeLeafPage(lastPid, lastPageBytes, keyField);
 			lastPage.setLeftSiblingId(secondToLastPid);
@@ -497,18 +493,17 @@ public class BTreeFileEncoder {
 	 * 
 	 * @param tuples - the set of tuples
 	 * @param npagebytes - number of bytes per page
-	 * @param numFields - number of fields in each tuple
-	 * @param typeAr - array containing the types of the tuples
+	 * @param td - the tuple descriptor of tuples in the file.
 	 * @param keyField - the field of the tuples the B+ tree will be keyed on
 	 * @return a byte array which can be passed to the BTreeLeafPage constructor
 	 * @throws IOException
 	 */
 	public static byte[] convertToLeafPage(ArrayList<Tuple> tuples, int npagebytes,
-			int numFields, Type[] typeAr, int keyField)
+			TupleDesc td, int keyField)
 					throws IOException {
 		int nrecbytes = 0;
-		for (int i = 0; i < numFields ; i++) {
-			nrecbytes += typeAr[i].getLen();
+		for (int i = 0; i < td.numFields() ; i++) {
+			nrecbytes += td.getFieldType(i).getLen();
 		}
 		// pointerbytes: left sibling pointer, right sibling pointer, parent pointer
 		int pointerbytes = 3 * BTreeLeafPage.INDEX_SIZE; 
@@ -556,8 +551,8 @@ public class BTreeFileEncoder {
 
 		Collections.sort(tuples, new TupleComparator(keyField));
 		for(int t = 0; t < recordcount; t++) {
-			TupleDesc td = tuples.get(t).getTupleDesc();
-			for(int j = 0; j < td.numFields(); j++) {
+			TupleDesc tupleDesc = tuples.get(t).getTupleDesc();
+			for(int j = 0; j < tupleDesc.numFields(); j++) {
 				tuples.get(t).getField(j).serialize(dos);
 			}
 		}

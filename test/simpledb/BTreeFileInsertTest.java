@@ -38,7 +38,7 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
 		File emptyFile = File.createTempFile("empty", ".dat");
 		emptyFile.deleteOnExit();
 		Database.reset();
-		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 0, 3);
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), Utility.getTupleDesc(2), 0, 3);
 		int tableid = empty.getId();
 		int keyField = 0;
 
@@ -88,7 +88,7 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
 		emptyFile.deleteOnExit();
 		Database.reset();
 		int entriesPerPage = BTreeUtility.getNumEntriesPerPage();
-		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 0, 3 + entriesPerPage);
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), Utility.getTupleDesc(2), 0, 3 + entriesPerPage);
 		int tableid = empty.getId();
 		int keyField = 0;
 
@@ -137,7 +137,7 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
 		File emptyFile = File.createTempFile("empty", ".dat");
 		emptyFile.deleteOnExit();
 		Database.reset();
-		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 0, 3);
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), Utility.getTupleDesc(2), 0, 3);
 		int tableid = empty.getId();
 		int keyField = 0;
 

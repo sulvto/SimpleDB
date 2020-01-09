@@ -57,7 +57,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 		File emptyFile = File.createTempFile("empty", ".dat");
 		emptyFile.deleteOnExit();
 		Database.reset();
-		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 0);
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), Utility.getTupleDesc(2), 0);
 		int tableid = empty.getId();
 		int keyField = 0;
 
@@ -96,7 +96,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 		File emptyFile = File.createTempFile("empty", ".dat");
 		emptyFile.deleteOnExit();
 		Database.reset();
-		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 0);
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), Utility.getTupleDesc(2), 0);
 		int tableid = empty.getId();
 		int keyField = 0;
 
@@ -135,7 +135,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 		File emptyFile = File.createTempFile("empty", ".dat");
 		emptyFile.deleteOnExit();
 		Database.reset();
-		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 0, 3);
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), Utility.getTupleDesc(2), 0, 3);
 		int tableid = empty.getId();
 		int keyField = 0;
 
@@ -185,7 +185,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 		emptyFile.deleteOnExit();
 		Database.reset();
 		int entriesPerPage = BTreeUtility.getNumEntriesPerPage();
-		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 0, 5 + 3*entriesPerPage/2);
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), Utility.getTupleDesc(2), 0, 5 + 3*entriesPerPage/2);
 		int tableid = empty.getId();
 		int keyField = 0;
 
@@ -251,7 +251,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 		emptyFile.deleteOnExit();
 		Database.reset();
 		int entriesPerPage = BTreeUtility.getNumEntriesPerPage();
-		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 0, 5 + 3*entriesPerPage/2);
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), Utility.getTupleDesc(2), 0, 5 + 3*entriesPerPage/2);
 		int tableid = empty.getId();
 		int keyField = 0;
 
@@ -317,7 +317,7 @@ public class BTreeFileDeleteTest extends SimpleDbTestBase {
 		emptyFile.deleteOnExit();
 		Database.reset();
 		int entriesPerPage = BTreeUtility.getNumEntriesPerPage();
-		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 0, 1 + 2*entriesPerPage);
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), Utility.getTupleDesc(2), 0, 1 + 2*entriesPerPage);
 		int tableid = empty.getId();
 		int keyField = 0;
 
